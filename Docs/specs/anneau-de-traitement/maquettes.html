@@ -62,6 +62,7 @@
   .unread .l1 .type,.unread .subj{font-weight:700;color:#111827}
   .l1 .sp{flex:1}
   .subj{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .subj .thread-n{font-weight:400;color:#4b5563}
   .pat{font-size:11px;color:var(--primary-d)}
   .bio{font-size:11px;font-weight:600}
   .bio.crit{color:var(--crit)} .bio.warn{color:#b45309}
@@ -232,7 +233,7 @@
           <span class="pill">◷ À traiter 36</span><span class="pill">◉ Pour moi 6</span><span class="pill">⚗ Bio à acquitter (12)</span></div>
         <div id="wlist"></div>
       </div>
-      <p class="cap">La colonne de gauche porte aujourd'hui l'initiale de l'expéditeur dans un rond de 32 px. Variantes B et D : l'anneau prend cette place, à la même taille. Variantes A et C : il s'y substitue en plus petit.</p>
+      <p class="cap">La colonne de gauche porte aujourd'hui l'initiale de l'expéditeur dans un rond de 32 px. Variantes B et D : l'anneau prend cette place, à la même taille. Variantes A et C : il s'y substitue en plus petit. Variante D (recette du 28/11/2026) : un message auquel vous avez répondu porte une pointe de flèche sur le trait de l'anneau, en haut, tournée vers la gauche (ici, le compte rendu de radiographie), à la place de l'icône « lettre » ; une conversation affiche le nombre de ses messages entre parenthèses juste après l'objet (ici, « (2) » sur le compte rendu de cardiologie), sans pastille sur l'anneau.</p>
     </div>
     <div>
       <h3>Application mobile — Boîte de réception</h3>
@@ -381,6 +382,7 @@ function describe(s){
   if (s.sev===2) head += ' — valeur critique'; else if (s.sev===1) head += ' — valeur anormale';
   if (s.fail) head += ' — non distribué';
   parts.push(head + '.');
+  if (s.replied) parts.push('Vous avez répondu à ce message le ' + (s.repliedAt||'26/11 à 10 h 14') + '.');
   if (s.closed) parts.push('Boucle fermée (' + steps[steps.length-1].toLowerCase() + ').');
   else {
     parts.push('Étape ' + s.done + ' sur ' + steps.length + ' : ' + steps[s.done-1].toLowerCase() + ' ; reste : ' + steps.slice(s.done).join(', ').toLowerCase() + '.');
@@ -402,7 +404,28 @@ function late(s){
   return s.days>=t[2]?3 : s.days>=t[1]?2 : s.days>=t[0]?1 : 0;
 }
 
+/* Réponse envoyée (recette du 28/11/2026) : une pointe de flèche posée sur le trait de l'anneau, en
+   haut, tournée vers la gauche comme la flèche de l'icône « répondu » ; elle prolonge le premier
+   segment et se lit comme le bout d'un arc. À l'encre de l'anneau, détourée de la couleur de la page.
+   Elle remplace la pastille blanche cerclée et son icône « lettre » (task-500), jugées trop
+   imposantes. o.replyStyle==='pastille' redessine l'ancienne pastille, pour les alternatives. */
+function replyMark(o){
+  const P = palette(), k = 59/32;
+  if (o.replyStyle==='pastille'){
+    const r = 9*k, cx = f(15.5 + 31*k), cy = f(15.5 + 36*k);
+    return `<circle cx="${cx}" cy="${cy}" r="${f(r)}" fill="${P.paper}" stroke="#b7bccc" stroke-width="1.8"/>`
+      + `<g transform="translate(${f(cx-8)} ${f(cy-6.5)})" fill="none" stroke="#475569" stroke-width="1.8" stroke-linejoin="round"><rect x="0" y="0" width="16" height="13" rx="1.5"/><path d="M0 1l8 6 8-6"/></g>`;
+  }
+  const ink = S.contrast ? '#334155' : '#64748b';
+  return `<path d="M38.6 21 48.4 15.5 48.4 26.5z" fill="${ink}" stroke="${P.paper}" stroke-width="1.5" stroke-linejoin="round" paint-order="stroke"/>`;
+}
 function anneau(s, px, o={}){
+  const svg = anneauBase(s, px, o);
+  const V = o.variant || S.variant;
+  if (!svg || !s.replied || V!=='D') return svg;
+  return svg.replace(/<\/svg>$/, replyMark(o) + '</svg>');
+}
+function anneauBase(s, px, o={}){
   const V = o.variant || S.variant; if (V==='X') return '';
   const g = GEO[V], P = palette(), W = S.contrast ? g.W+1.5 : g.W, R = g.R;
   const half = R + W/2 + 1.5, vb = `${f(C0-half)} ${f(C0-half)} ${f(half*2)} ${f(half*2)}`;
@@ -517,7 +540,7 @@ const ROWS = [
   s:{cat:'bio',done:3,turn:'ext',extName:'du patient (rappel patient)',extLabel:'Attente patient',sev:1,days:4}},
  {from:'Laboratoire BIOTEST', type:'Biologie', subj:'Compte rendu d\'analyses biologiques', pat:'TEST Jeanne · 38 ans', date:'26/11', unread:true,
   s:{cat:'std',done:1,turn:'none',days:1}},
- {from:'Dr Camille ARNAUD', type:'Consultation', subj:'Compte rendu de consultation de cardiologie', pat:'ESSAI Paul · 71 ans', date:'25/11',
+ {from:'Dr Camille ARNAUD', type:'Consultation', subj:'Compte rendu de consultation de cardiologie', pat:'ESSAI Paul · 71 ans', date:'25/11', thread:2,
   s:{cat:'std',done:2,turn:'peer',who:'CD',whoName:'Cyril DELEGUE (délégataire)',days:2}},
  {from:'CH Démo — Service ORL', type:'Lettre de liaison', subj:'Lettre de liaison de sortie', pat:'DEMO Marie · 54 ans', date:'12/11',
   s:{cat:'std',done:2,turn:'me',assigned:true,days:15}},
@@ -528,7 +551,7 @@ const ROWS = [
  {from:'Dr Virginie MARTIN', type:'Envoyé', subj:'Courrier d\'adressage', pat:'ESSAI Paul · 71 ans', date:'26/11', sent:true,
   s:{cat:'sent',done:1,turn:'ext',fail:true,extName:'— adresse refusée',days:1}},
  {from:'Radiologie Démo', type:'Imagerie', subj:'Compte rendu de radiographie thoracique', pat:'DEMO Marie · 54 ans', date:'24/11',
-  s:{cat:'std',done:3,closed:true}},
+  s:{cat:'std',done:3,closed:true,replied:true,repliedAt:'25/11 à 17 h 02'}},
  {from:'Laboratoire BIOTEST', type:'Biologie', subj:'Compte rendu d\'analyses biologiques', pat:'DEMO Luc · 62 ans', date:'24/11',
   s:{cat:'bio',done:4,closed:true,sev:1}},
  {from:'Messagerie MSSanté', type:'Pour info', subj:'Accusé de lecture : Courrier d\'adressage', pat:'', date:'26/11',
@@ -549,7 +572,7 @@ function renderLists(){
       <div class="slot">${leftSlot(r,'web')}</div>
       <div class="body">
         <div class="l1"><span class="type">${r.type} · ${r.from}</span><span class="sp"></span>${S.mode==='classic'?sideChipsClassic(r.s):sideChips(r.s)}<span>${r.date}</span></div>
-        <div class="subj">${r.subj}</div>
+        <div class="subj">${r.subj}${r.thread && S.variant!=='X' && S.mode!=='classic' ? ` <span class="thread-n" title="Conversation de ${r.thread} messages">(${r.thread})</span>` : ''}</div>
         ${r.pat?`<div class="pat">${r.pat}</div>`:''}
         ${r.bio?`<div class="bio ${r.crit?'crit':'warn'}">${r.bio}</div>`:''}
       </div>
@@ -578,6 +601,8 @@ const BOARDS = [
    [{cat:'std',done:2,turn:'peer',who:'CD',days:2},'Affecté à CD','À traiter par un collègue'],
    [{cat:'std',done:2,turn:'ext',days:2},'En attente d\'un tiers',"Sans donnée aujourd'hui : répondre ferme la boucle"],
    [{cat:'std',done:3,closed:true},'Traité','Boucle fermée, atténuée'],
+   [{cat:'std',done:3,closed:true,replied:true},'Traité, réponse envoyée','Pointe de flèche sur le trait, en haut (recette du 28/11)'],
+   [{cat:'std',done:2,turn:'me',days:1,replied:true},'Lu, réponse envoyée','La pointe ne ferme pas la boucle : elle dit seulement qu\'une réponse est partie'],
  ]],
  ['Biologie avec anomalie — segments alignés sur l\'acquittement existant (recommandé)', [
    [{cat:'bio',done:1,turn:'me',sev:1,days:0},'Reçu — anormal','À acquitter'],
@@ -698,7 +723,9 @@ function renderLegend(){
   let h = `<div class="q">Où en est-on ?</div>` +
     lg([{cat:'std',done:1,turn:'me'},{cat:'std',done:2,turn:'me'}],'Un segment par étape franchie','Courrier : reçu, lu, traité. Les traits fins sont les étapes qui restent.') +
     lg([{cat:'bio',done:2,turn:'me',sev:1}],'Biologie avec anomalie : quatre étapes','Reçu, pris connaissance, suite donnée (rappel, convocation, adressage), résolu.') +
-    lg([{cat:'std',done:3,closed:true}],'Boucle fermée', rich ? 'Anneau complet et atténué : plus rien à faire.' : 'Une coche : plus rien à faire.');
+    lg([{cat:'std',done:3,closed:true}],'Boucle fermée', rich ? 'Anneau complet et atténué : plus rien à faire.' : 'Une coche : plus rien à faire.') +
+    (V==='D' ? lg([{cat:'std',done:3,closed:true,replied:true},{cat:'std',done:2,turn:'me',replied:true}],'Réponse envoyée','Une pointe de flèche sur le trait de l\'anneau, en haut, tournée vers la gauche : vous avez répondu à ce message. L\'infobulle donne la date et l\'auteur de la réponse.') +
+      row('<span style="font-size:13px">Objet du message <span style="color:#4b5563">(2)</span></span>','Conversation','Le nombre de messages du fil, entre parenthèses, juste à droite de l\'objet. Pas de pastille sur l\'anneau.') : '');
   if (rich) h += `<div class="q">Dans quel sens ?</div>` +
     lg([{cat:'std',done:2,turn:'me'},{cat:'sent',done:2,turn:'ext'}],'La pointe donne le sens','Reçu : l\'arc tourne comme une horloge. Envoyé : il tourne à l\'envers.');
   h += `<div class="q">À qui le tour ?</div>`;
@@ -755,6 +782,12 @@ function renderAlts(){
      ['Anneau plein atténué', duo({cat:'std',done:3,closed:true},{variant:'A'}), 'La demande. Se lit « case non cochée ».'],
      ['Anneau plein + coche', duo({cat:'std',done:3,closed:true},{variant:'B'}), 'Compris, mais 150 anneaux épais dans une liste de 200.'],
      ['Coche fine', duo({cat:'std',done:3,closed:true},{variant:'D'}), 'Compris, et s\'efface derrière les boucles ouvertes.', true]]],
+   ['La réponse envoyée', [
+     ['Icône « lettre » dans une pastille', duo({cat:'std',done:3,closed:true,replied:true},{variant:'D',replyStyle:'pastille'}), 'task-500 : l\'icône « répondu » de la ligne, posée au bord de l\'anneau dans une pastille blanche cerclée. Écartée en recette le 28/11/2026 : trop imposante, elle prenait le dessus sur l\'anneau.'],
+     ['Pointe de flèche sur le trait', duo({cat:'std',done:3,closed:true,replied:true},{variant:'D'}) + duo({cat:'std',done:2,turn:'me',replied:true},{variant:'D'}), 'Recette du 28/11/2026. Une pointe posée sur la périphérie, en haut, tournée vers la gauche comme la flèche de l\'icône « répondu » ; elle prolonge le premier segment. À l\'encre de l\'anneau, détourée de la couleur de la page. Infobulle et lecteur d\'écran inchangés.', true]]],
+   ['Le compteur de conversation', [
+     ['Pastille ronde sur l\'anneau', anneau({cat:'std',done:2,turn:'me'},32,{variant:'D'}) + '<span class="badge-ack c solid" style="background:#46577c;border-color:#46577c">2</span>', 'task-500 : pastille gris foncé en haut à droite de l\'anneau. Abandonnée en recette le 28/11/2026 : un cercle de plus sur l\'anneau.'],
+     ['« (2) » à droite de l\'objet', '<span style="font-size:13px;font-weight:500">Compte rendu de consultation <span style="font-weight:400;color:#4b5563">(2)</span></span>', 'Recette du 28/11/2026 : le plus simple possible. Le nombre entre parenthèses, juste après l\'objet, sans plafond. Le chevron déplie le fil. En icône classique, « 2 messages » reste.', true]]],
   ];
   document.getElementById('alts').innerHTML = alts.map(([q,opts]) => `<div class="altc"><h4>${q}</h4>${opts.map(([n,ic,t,reco]) =>
     `<div class="ic">${ic}</div><p><b style="color:var(--text)">${n}</b>${reco?'<span class="tag-reco">retenu après revue</span>':''}<br>${t}</p>`).join('')}</div>`).join('');
