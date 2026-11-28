@@ -417,7 +417,7 @@ function replyMark(o){
       + `<g transform="translate(${f(cx-8)} ${f(cy-6.5)})" fill="none" stroke="#475569" stroke-width="1.8" stroke-linejoin="round"><rect x="0" y="0" width="16" height="13" rx="1.5"/><path d="M0 1l8 6 8-6"/></g>`;
   }
   const ink = S.contrast ? '#334155' : '#64748b';
-  return `<path d="M38.6 21 48.4 15.5 48.4 26.5z" fill="${ink}" stroke="${P.paper}" stroke-width="1.5" stroke-linejoin="round" paint-order="stroke"/>`;
+  return `<path d="M38.6 21 48.4 15.5 48.4 26.5z" fill="${ink}"${S.contrast?'':' fill-opacity=".8"'} stroke="${P.paper}" stroke-width="1.5" stroke-linejoin="round" paint-order="stroke"/>`;
 }
 function anneau(s, px, o={}){
   const svg = anneauBase(s, px, o);
@@ -454,6 +454,9 @@ function anneauBase(s, px, o={}){
     if (V==='B') out += `<path d="M${C0-7} ${C0+0.5}l5 5 9.5-10.5" fill="none" stroke="${col}" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>`;
     return out + '</svg>';
   }
+  // Recette du 28/11/2026 (variante D) : segments pleins adoucis d'une transparence de 80 %,
+  // opaques en contraste renforcé.
+  const soft = V==='D' && !S.contrast ? ' stroke-opacity=".8"' : '';
   let tipAngle = -90;
   for (let i=0;i<n;i++){
     const a0 = -90 + dir*(i*(span+g.gap) + g.gap/2), a1 = a0 + dir*span;
@@ -462,10 +465,10 @@ function anneauBase(s, px, o={}){
     const fresh = o.fresh && last && S.show.anim;
     if (last && RICH(V)){
       const tip = 15, b = a1 - dir*tip, p1 = pol(R+W*0.95,b), p2 = pol(R-W*0.95,b), p3 = pol(R, a1+dir*5);
-      out += `<path d="${arc(R,a0,b,dir)}" fill="none" stroke="${col}" stroke-width="${W}"${fresh?' pathLength="1" class="seg-new"':''}/>`;
+      out += `<path d="${arc(R,a0,b,dir)}" fill="none" stroke="${col}" stroke-width="${W}"${soft}${fresh?' pathLength="1" class="seg-new"':''}/>`;
       out += `<polygon points="${p1} ${p2} ${p3}" fill="${col}"${fresh?' class="tip-new"':''}/>`;
       tipAngle = a1 + dir*5;
-    } else out += `<path d="${arc(R,a0,a1,dir)}" fill="none" stroke="${col}" stroke-width="${W}"${fresh?' pathLength="1" class="seg-new"':''}/>`;
+    } else out += `<path d="${arc(R,a0,a1,dir)}" fill="none" stroke="${col}" stroke-width="${W}"${soft}${fresh?' pathLength="1" class="seg-new"':''}/>`;
   }
   const outer = R + W/2 + (RICH(V) && S.show.rings ? L*3.4 : 0);
   if (V==='D' && s.fail) out += `<path d="M${C0-7} ${C0-7}l14 14M${C0+7} ${C0-7}l-14 14" stroke="${P.ink}" stroke-width="4.2" stroke-linecap="round"/>`;
@@ -782,6 +785,9 @@ function renderAlts(){
      ['Anneau plein atténué', duo({cat:'std',done:3,closed:true},{variant:'A'}), 'La demande. Se lit « case non cochée ».'],
      ['Anneau plein + coche', duo({cat:'std',done:3,closed:true},{variant:'B'}), 'Compris, mais 150 anneaux épais dans une liste de 200.'],
      ['Coche fine', duo({cat:'std',done:3,closed:true},{variant:'D'}), 'Compris, et s\'efface derrière les boucles ouvertes.', true]]],
+   ['Le trait d’une étape franchie', [
+     ['Opaque', duo({cat:'std',done:2,turn:'me'},{variant:'D'}).replace(/ stroke-opacity=".8"/g,''), 'task-500 (R3) : teintes éclaircies, mais le trait plein restait dur.'],
+     ['Adouci (80 %)', duo({cat:'std',done:2,turn:'me'},{variant:'D'}), 'Recette du 28/11/2026. Segments pleins et pointe « répondu » à 80 % d’opacité. Le neutre et l’ambre passent un peu sous 3:1 sur les fonds teintés (2,8 à 3,0) : la forme porte l’état, et « Contraste renforcé » rend le trait opaque.', true]]],
    ['La réponse envoyée', [
      ['Icône « lettre » dans une pastille', duo({cat:'std',done:3,closed:true,replied:true},{variant:'D',replyStyle:'pastille'}), 'task-500 : l\'icône « répondu » de la ligne, posée au bord de l\'anneau dans une pastille blanche cerclée. Écartée en recette le 28/11/2026 : trop imposante, elle prenait le dessus sur l\'anneau.'],
      ['Pointe de flèche sur le trait', duo({cat:'std',done:3,closed:true,replied:true},{variant:'D'}) + duo({cat:'std',done:2,turn:'me',replied:true},{variant:'D'}), 'Recette du 28/11/2026. Une pointe posée sur la périphérie, en haut, tournée vers la gauche comme la flèche de l\'icône « répondu » ; elle prolonge le premier segment. À l\'encre de l\'anneau, détourée de la couleur de la page. Infobulle et lecteur d\'écran inchangés.', true]]],
