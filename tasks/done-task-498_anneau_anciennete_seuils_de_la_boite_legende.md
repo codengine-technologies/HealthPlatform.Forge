@@ -174,7 +174,8 @@ Lecture du code au 2026-11-27 :
 | /lint-angular | ok | 28 s | — | — | — | — |
 | /lint-mobile | ok | 14 s | — | — | — | — |
 | /e2e | ok | 31 min 34 s | — | — | — | e2e ×6 (1 h 00 min) |
-| **Total cycle** | | **1 h 07 min** | **17 (4 min 02 s)** | **67 (36 min 53 s)** | **2 (47 s)** | |
+| /review | ok | 2 min 13 s | 1 (2.4 s) | — | — | dtos-mss 1B/0T |
+| **Total cycle** | | **1 h 09 min** | **18 (4 min 04 s)** | **67 (36 min 53 s)** | **2 (47 s)** | |
 
 Autres commandes mesurées : lint ×4 (38 s), nuget-wait ×1 (11 s), restore ×1 (3.6 s)
 
