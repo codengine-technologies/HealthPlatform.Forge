@@ -1279,3 +1279,13 @@ Ouvertes le 2026-11-28 par `/review` (validation finale), label `awaiting-human-
 Validation finale : build + tests réutilisés par le marqueur vert (api-mail `459e5769`, client-mobile `1745cea`,
 client-angular arbre — tous de `/develop`) ; dtos-mss rebâti (0 erreur) ; DoD vérifiée ; `## E2E log` vert ; aucun
 commit depuis les SHA approuvés au passage 3 (pas de nouveau diff à relire) ; branches à jour avec `develop`.
+
+## Merged
+
+- 2026-11-28, `/merge task-498 --i-tested` (squash, ordre dtos-mss → api-mail → client-mobile) :
+  - `dtos-mss` : `30065665` (PR #76) — CI `develop` verte : https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/actions/runs/46129826933
+  - `api-mail` : `ddb782d0` (PR #384) — CI `develop` verte : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/actions/runs/46129840591
+  - `client-mobile` : `3a380ddd` (PR #139) — CI `develop` verte : https://github.com/codengine-technologies/HealthPlatform.Mobile/actions/runs/46129854800
+- Label `awaiting-human-merge` retiré des trois PR. Branches `feat/task-498-…` supprimées (distantes et locales) ; clones
+  revenus sur `develop`. Pas de branche staging (task hors `/forge`).
+- `client-angular` : géré à la main par l'humain (TFS).
