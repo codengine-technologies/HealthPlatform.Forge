@@ -1261,3 +1261,19 @@ ports libres, aucun conteneur `e2e-*` résiduel. Aucun écran modifié par la re
 - E2E-SEARCH-008 [mobile] — les critères médicaux arrivent sur le mobile avec la refonte mobile — résorbée par task-451
 
 **Parité : verte** — aucun écart entre le catalogue et les suites.
+
+## PRs
+
+Ouvertes le 2026-11-28 par `/review` (validation finale), label `awaiting-human-merge` — même US, à merger ensemble
+(dtos-mss et api-mail, puis client-mobile ; règle 11) :
+
+- dtos-mss : https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/76
+- api-mail : https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/384
+- client-mobile : https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/139
+- client-angular : code-only — humain gère commit/push TFS et ouverture PR, sur `feature/nova-mss-weda-integration`
+  (base `3f6e9119`) : 31 fichiers modifiés, 16 créés — liste dans le `## Develop log`, « Fichiers à commiter sur TFS
+  (état réel de l'arbre … après la reprise 2) ».
+
+Validation finale : build + tests réutilisés par le marqueur vert (api-mail `459e5769`, client-mobile `1745cea`,
+client-angular arbre — tous de `/develop`) ; dtos-mss rebâti (0 erreur) ; DoD vérifiée ; `## E2E log` vert ; aucun
+commit depuis les SHA approuvés au passage 3 (pas de nouveau diff à relire) ; branches à jour avec `develop`.
