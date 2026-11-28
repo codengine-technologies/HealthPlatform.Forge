@@ -169,12 +169,12 @@ Lecture du code au 2026-11-27 :
 |---|---|---|---|---|---|---|
 | /start | ok | 31 s | — | — | — | — |
 | /develop | ok | 32 min 16 s | 16 (3 min 12 s) | 62 (28 min 34 s) | — | dtos-mss 1B/0T, api-mail 7B/56T, client-mobile 4B/4T, client-angular 4B/2T, reprise 2 (B-E1) |
-| /review-code | ok | 4 min 15 s | — | — | — | passage 2 |
+| /review-code | ok | 2 min 11 s | — | — | — | passage 3 APPROVED |
 | /sonar | ok | 11 min 52 s | 1 (49 s) | 5 (8 min 19 s) | 2 (47 s) | 1 itération(s), api-mail 1B/5T |
 | /lint-angular | ok | 26 s | — | — | — | — |
 | /lint-mobile | ok | 16 s | — | — | — | — |
 | /e2e | failed | 32 min 12 s | — | — | — | e2e ×3 (30 min 00 s), RING-004 mobile rouge : dates serveur sans Z lues en heure locale |
-| **Total cycle** | | **1 h 21 min** | **17 (4 min 02 s)** | **67 (36 min 53 s)** | **2 (47 s)** | |
+| **Total cycle** | | **1 h 19 min** | **17 (4 min 02 s)** | **67 (36 min 53 s)** | **2 (47 s)** | |
 
 Autres commandes mesurées : lint ×2 (17 s), nuget-wait ×1 (11 s), restore ×1 (3.6 s)
 
@@ -1029,6 +1029,33 @@ relancée par l'humain (`/develop task-498 --reprise`).
 
 Hors task, signalé : l'**affichage** des heures de `sentDate` dans les clients peut porter le même décalage (antérieur
 à task-498, non vérifié à l'écran) — task à part, après vérification.
+
+### Passage 3 (revue anticipée, après la reprise 2) — APPROVED
+
+Relecteur indépendant (code seul), diff de la reprise lu en premier (ce qu'il a cassé), puis B-E1 vérifié.
+- **Régression cherchée** : toutes les lectures de date de l'ancienneté passent par `serverInstant` — mobile
+  `ringAgingReference` (via `mailRingAging` / `reportRingAging` : `mail-detail`, `mail-header`, légende), weda2
+  `agingReference` (via `mailAging`, `mail-header`, `mail-ring-panel` → `loopAging`). Les légendes construisent leurs
+  dates d'exemple en `Date` ou avec `Z` : non concernées. Nulle / vide / invalide : même résultat qu'avant.
+- **B-E1 corrigé** : l'expression lit en UTC `HH:MM`, `HH:MM:SS` et toute fraction (dont les 7 chiffres de .NET) ;
+  `Z`, `+01:00`, `-0500` et une date seule restent inchangés. Côté serveur, `ArrivalDate` est bien l'UTC
+  (`EmailBuildingService` `InternalDate?.UtcDateTime`, `MailRepository.NormalizeUtc`). Tests déterministes, 4 rouges
+  sur l'ancien code à Paris.
+- `contract_impact.py check` : api-mcp aucun impact ; client-mobile aucun impact ; client-angular IMPACT
+  (`AuditActionType` décodé par rang) — adapté (`audit.model.ts`, `MailboxAgingThresholdsChanged: 77`).
+- Règle 1b : api-mail inchangé depuis `459e5769` (aucun comportement d'endpoint nouveau). Catalogue : E2E-RING-004 et
+  E2E-SETTINGS-006 en v1, déclarés v1 dans les deux clients.
+
+**Approved at** : api-mail `459e5769` ; dtos-mss `158d4e46` ; client-mobile `1745cea` ; client-angular arbre de
+`feature/nova-mss-weda-integration` (base `3f6e9119`, 31 modifiés, 16 créés).
+
+Suggestions sans suite (non bloquantes) :
+- Le test « J+8 » ne discrimine le défaut qu'à l'est d'UTC (en UTC−5, 00 h 30 locale = 05 h 30 Z du même jour) ; le test
+  « H+5 » le discrimine dans tout fuseau hors UTC. Choisir l'instant proche de minuit selon le signe de
+  `getTimezoneOffset()` (`fuseau-fige-sous-vmthreads`) si le test est repris.
+- Hors ancienneté : weda2 `mail-handling.util.ts:36` lit `new Date(handling.at)` pour « Traité le … à HH:MM » ; à
+  vérifier avec la task « affichage des heures de `sentDate` » signalée plus haut, si `handling.at` sort un jour sans fuseau.
+- L'expression est recopiée dans les deux helpers e2e : voulu (oracle indépendant du code de l'application).
 
 ## Sonar log
 
