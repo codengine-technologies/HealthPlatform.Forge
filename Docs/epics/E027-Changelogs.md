@@ -4,11 +4,53 @@
 > **Vue produit** : [E027-anneau-de-traitement-voir-les-boucles-ou.md](E027-anneau-de-traitement-voir-les-boucles-ou.md)
 > **Conception** : [`Docs/specs/anneau-de-traitement/`](../specs/anneau-de-traitement/specification.md) (spécification,
 > maquettes variante D, revue de design — validées le 2026-11-27)
-> **Dernière mise à jour** : 2026-11-27
+> **Dernière mise à jour** : 2026-11-28
 
 ---
 
 ## Historique détaillé des changelogs
+
+### v0.3 — task-498 : ancienneté, seuils de la boîte, préférences et légende (api-mail, dtos-mss, client-mobile, weda2)
+
+- **État** : `done` — PRs en attente du merge humain (HAG). 2 reprises (1 sur revue anticipée, 1 sur `/e2e` rouge).
+- **PRs** : dtos-mss [#76](https://github.com/codengine-technologies/HealthPlatform.Dtos.Mss/pull/76), api-mail
+  [#384](https://github.com/codengine-technologies/HealthPlatform.Api.Mail/pull/384), client-mobile
+  [#139](https://github.com/codengine-technologies/HealthPlatform.Mobile/pull/139) — label `awaiting-human-merge`.
+  client-angular en code-only : 31 fichiers modifiés et 16 créés, non commités sur `feature/nova-mss-weda-integration`
+  (base `3f6e9119`, liste dans le task file). Ordre de merge : dtos-mss et api-mail, puis client-mobile ; weda2 avec eux.
+- **Contrat** : `HealthPlatform.Dtos.Mss` 641.0.0 (`MailboxAgingThresholdsDto`, `AgingThresholdsDto`,
+  `UserSettingsDto.RingDisplay`, `AuditActionType.MailboxAgingThresholdsChanged` = 77), api-mail bumpé.
+  `contract_impact.py check` : api-mcp et client-mobile aucun impact ; client-angular IMPACT (`AuditActionType` décodé
+  par rang) adapté dans `audit.model.ts`.
+- **api-mail** (`459e5769`) : `GET|PUT api/v1/account/mailboxes/current/aging-thresholds`
+  (`MailboxAgingThresholdsController`, sans `[MailboxNotRequired]` : verdict opérateur exigé) ;
+  `MailboxAgingThresholdsService` + `MailboxAgingThresholdsRule` (entiers, 1-720 h / 1-365 j, strictement croissants,
+  catégorie absente refusée — 400 `MAILBOX_AGING_THRESHOLDS_INVALID` avec `field`) ; table d'une ligne
+  `MailboxAgingThresholds` (migration FluentMigrator 20261127120000, ajout seul, descente qui retire la table) ;
+  écriture `INSERT … ON CONFLICT DO NOTHING` + `FOR UPDATE` (premières écritures simultanées sans 500, anciennes valeurs
+  justes dans la trace) ; acte tracé avec auteur réel, rôle, anciennes et nouvelles valeurs ; `docs/codes-erreur.md`
+  régénéré. Catalogue : `E2E-RING-004` v1, `E2E-SETTINGS-006` v1 (`mobile: requis`, `angular: requis`).
+- **weda2** : `core/utils/mail-aging.util.ts` (référence, catégorie, niveau, compteur, phrase, validation locale, refus
+  serveur), `core/utils/server-date.util.ts` (lecture en UTC d'une date servie sans fuseau), horloge injectée
+  `MSS_CLOCK`, `RingSettingsService` (seuils de boîte, remis à zéro au changement de boîte), sections « Anneau de
+  traitement » et seuils dans « Boîte aux lettres » des Paramètres, légende dessinée par `MailRingComponent`.
+- **client-mobile** (`1745cea`) : `core/utils/treatment-ring-aging.util.ts`, `core/utils/server-date.util.ts`,
+  `mailbox-aging-thresholds.service.ts` (`ensureLoaded`, dernière valeur gardée sur échec), page
+  `treatment-ring-legend` (gardes `authGuard` / `mailboxGuard`), seuils dans « Suivi ».
+- **Revue** : passage 1 CHANGES REQUESTED (B1 à B6, S-A1 à S-A3, S-W1 à S-W5, S-M1 à S-M4, S-L1) ; passage 2 APPROVED ;
+  `/e2e` rouge sur la voie mobile (E2E-RING-004 : `ArrivalDate` servie sans `Z`, lue en heure locale par les clients et
+  le helper e2e ; « J+N » d'un jour de trop entre minuit local et minuit UTC, « H+N » d'une heure de trop) → reprise 2
+  (B-E1) ; passage 3 APPROVED. Arbitrage ouvert : A1 (préférence « Affectation » en icône classique — recommandation :
+  non).
+- **Preuves** : api-mail 11 comportements prouvés par tests d'intégration (mutations M1-M19, R2-R5) ; weda2 mutations
+  R1-R12 et 4 tests B-E1 vus rouges ; mobile rouges consignés et 4 tests B-E1 vus rouges. Validation : api-mail domain
+  388, application 4 397, infrastructure 749, api 1 398, intégration 1 395 ; mobile 2 098 ; weda2 mss-lib 2 330 + weda2
+  2 684 ; `/e2e` vert (mobile 87, angular 110, parité verte).
+- **Sonar** : Quality Gate OK, new coverage 96,1 %, 0 bug / vulnérabilité / hotspot ; 1 S3925 faux positif.
+- **Consignes** : `catalogue-erreur-document-regenere` (`conventions/csharp.md`), horloge injectée figée dans les specs
+  (`conventions/angular.md`, récidive B5), `date-serveur-sans-fuseau` (`conventions/angular.md`, nouvelle).
+- **Signalé hors task** : l'affichage des heures de `sentDate` (et « Traité le … à HH:MM » de weda2) peut porter le
+  même décalage qu'une date lue sans fuseau — à vérifier à l'écran, task à part.
 
 ### v0.2 — task-500 : une ligne de liste allégée (api-mail, client-mobile, weda2)
 
@@ -163,15 +205,21 @@
 | weda2 `libs/mss/src/ui/mail-ring/`, `features/mail/components/mail-ring-panel/` | anneau et bloc du détail web | task-497 |
 | weda2 `features/mail/services/mail-biology-ack-live.service.ts`, `MailStateService.ringFolderTypes` | direct et type de dossier mis en cache | task-497 |
 | `Api/Mail/e2e/scenarios.yml` E2E-RING-001/002/003, E2E-SETTINGS-005 | parcours de l'anneau | task-497 |
+| `api-mail` `MailboxAgingThresholdsController`, `MailboxAgingThresholdsService`, `MailboxAgingThresholdsRule`, `MailboxAgingThresholdsRepository`, migration `20261127120000_AddMailboxAgingThresholds` | seuils d'ancienneté de la boîte, validation, écriture tracée | task-498 |
+| `dtos-mss` `MailboxAgingThresholdsDto`, `AgingThresholdsDto`, `UserSettingsDto.RingDisplay`, `AuditActionType.MailboxAgingThresholdsChanged` | contrat de l'ancienneté et des préférences (641.0.0) | task-498 |
+| client-mobile `core/utils/treatment-ring-aging.util.ts`, `core/utils/server-date.util.ts`, `mailbox-aging-thresholds.service.ts`, page `treatment-ring-legend` | ancienneté, lecture des dates serveur, seuils, légende mobile | task-498 |
+| weda2 `libs/mss/src/core/utils/mail-aging.util.ts`, `core/utils/server-date.util.ts`, `RingSettingsService`, section « Anneau de traitement » des Paramètres | ancienneté, lecture des dates serveur, seuils, légende web | task-498 |
+| `Api/Mail/e2e/scenarios.yml` E2E-RING-004, E2E-SETTINGS-006 | parcours de l'ancienneté et de la légende | task-498 |
 
 ---
 
-## Annexe B — Inventaire fonctionnel daté (2026-11-27)
+## Annexe B — Inventaire fonctionnel daté (2026-11-28)
 
-- Tasks de l'EPIC : 3 — 1 `done` (497), 2 `todo` (498, 499).
+- Tasks de l'EPIC : 4 — 2 `archived` (497, 500), 1 `done` (498), 1 `todo` (499).
 - Scénarios e2e de l'EPIC au catalogue : 4 ajoutés (E2E-RING-001, E2E-RING-002, E2E-RING-003, E2E-SETTINGS-005) ;
   5 montés de version (E2E-ASSIGN-001 v3, E2E-BIO-001 v3, E2E-BIO-003 v2, E2E-BIO-007 v2, E2E-DETAIL-004 v2).
-- Prévus au backlog : E2E-RING-004, E2E-SETTINGS-006 (task-498), E2E-DASH-002 (task-499).
+- Ajoutés ensuite : E2E-RING-005 v1 et E2E-RING-003 v2 (task-500), E2E-RING-004 v1 et E2E-SETTINGS-006 v1 (task-498).
+- Prévu au backlog : E2E-DASH-002 (task-499).
 
 ---
 
@@ -180,6 +228,6 @@
 | Task | Contribution | État |
 |---|---|---|
 | task-497 | L'anneau dans la liste et le détail : étape d'acquittement servie sur la ligne sans requête de plus, historique daté dans le détail, évènement en direct pour tout acquittement, anneau et bloc du détail sur les deux clients, initiales dans l'anneau, « Non affecté » / « Attente patient » / « Attente confrère », boutons d'acquittement sous l'anneau (section « Traitement » du panneau latéral sur weda2), préférence anneau / icône classique | `archived` — mergée le 2026-11-27 (PRs #75, #382, #136) |
-| task-498 | Ancienneté : seuils par catégorie réglés au niveau de la boîte (changement tracé), compteur J+N / H+N calculé sur le poste, préférences d'affichage, contraste renforcé, légende | `todo` |
+| task-498 | Ancienneté : seuils par catégorie réglés au niveau de la boîte (changement tracé), compteur J+N / H+N calculé sur le poste, préférences d'affichage, contraste renforcé, légende ; dates servies sans fuseau lues en UTC | `done` (PRs #76, #384, #139) |
 | task-499 | Tableau de bord : « dont N en retard » sur les tuiles existantes, tuile « Non affectées », listes filtrées servies par le serveur, après mesure sur une boîte de 10 000 messages | `todo` |
-| task-500 | Ligne de liste allégée : « Non affecté » et identifiant hors de la ligne (survol de l'anneau), compteur de conversation en pastille grise sur l'anneau, icône « répondu » au bord de l'anneau, 2 valeurs de biologie au plus, une seule date, moins de puces redondantes (weda2 et mobile) | `done` (PRs #383, #137) |
+| task-500 | Ligne de liste allégée : « Non affecté » et identifiant hors de la ligne (survol de l'anneau), compteur de conversation en pastille grise sur l'anneau, icône « répondu » au bord de l'anneau, 2 valeurs de biologie au plus, une seule date, moins de puces redondantes (weda2 et mobile) | `archived` — mergée le 2026-11-27 (PRs #383, #137 ; recette #138) |

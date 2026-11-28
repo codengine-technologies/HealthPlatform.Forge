@@ -175,7 +175,8 @@ Lecture du code au 2026-11-27 :
 | /lint-mobile | ok | 14 s | — | — | — | — |
 | /e2e | ok | 31 min 34 s | — | — | — | e2e ×6 (1 h 00 min) |
 | /review | ok | 2 min 13 s | 1 (2.4 s) | — | — | dtos-mss 1B/0T |
-| **Total cycle** | | **1 h 09 min** | **18 (4 min 04 s)** | **67 (36 min 53 s)** | **2 (47 s)** | |
+| /tech-writer | ok | 2 min 20 s | — | — | — | — |
+| **Total cycle** | | **1 h 11 min** | **18 (4 min 04 s)** | **67 (36 min 53 s)** | **2 (47 s)** | |
 
 Autres commandes mesurées : lint ×4 (38 s), nuget-wait ×1 (11 s), restore ×1 (3.6 s)
 

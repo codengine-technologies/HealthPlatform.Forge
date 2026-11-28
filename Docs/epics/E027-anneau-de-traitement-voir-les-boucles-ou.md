@@ -1,11 +1,11 @@
 # E027 — Anneau de traitement : voir les boucles ouvertes
 
-> **Statut** : 🟡 En cours — 1 feature mergée (task-497), 1 livrée en attente de validation (task-500) ; 2 au backlog (tasks 498, 499).
+> **Statut** : 🟡 En cours — 2 features mergées (tasks 497, 500), 1 livrée en attente de validation (task-498) ; 1 au backlog (task-499).
 > **Modèle** : task-driven
-> **Version** : 0.2
+> **Version** : 0.3
 > **Auteur** : PO forge (task-497)
 > **Audience** : PO, médecins, secrétaires médicales, direction, conformité
-> **Dernière mise à jour** : 2026-11-27
+> **Dernière mise à jour** : 2026-11-28
 > **Vue ingénierie** : [E027-Changelogs.md](E027-Changelogs.md)
 
 ---
@@ -24,7 +24,7 @@
 - [8. Critères d'acceptation de l'EPIC](#8-critères-dacceptation-de-lepic)
 - [9. Hors périmètre](#9-hors-périmètre)
 - [Annexe — Sources documentaires](#annexe--sources-documentaires)
-- [État de couverture (2026-11-27)](#état-de-couverture-2026-11-27)
+- [État de couverture (2026-11-28)](#état-de-couverture-2026-11-28)
 - [Synthèse fonctionnelle des changelogs](#synthèse-fonctionnelle-des-changelogs)
 
 <!-- toc:end -->
@@ -79,8 +79,8 @@ il dessine ce que la boîte sait déjà (lu, traité, attribué, acquitté), pou
 | Fonctionnalité | Ce que le praticien peut faire | Tasks | Statut |
 |---|---|---|---|
 | L'anneau dans la liste et le détail | Voir, à la place de l'initiale de l'expéditeur, un anneau qui dit l'étape atteinte par chaque message à traiter : trois étapes pour un courrier (reçu, lu, traité), quatre pour un compte rendu de biologie à acquitter (reçu, pris connaissance, suite donnée, résolu). Lire au centre les initiales de la personne à qui le message est confié, sur fond plein quand c'est soi ; lire à droite « Non affecté », « Attente patient » ou « Attente confrère ». Reconnaître la gravité à la couleur, ambre pour une anomalie, rouge pour une valeur critique. Ouvrir le message et trouver l'anneau, les étapes datées et signées, et les boutons d'acquittement rangés par étape : dans la section « Traitement » du panneau latéral sur le web, en tête du message sur le mobile. Revenir à l'icône classique si on le préfère | task-497 | ✅ Livrée et mergée |
-| Une ligne de liste allégée | Lire une ligne qui ne dit que l'utile : plus de « Non affecté » ni d'identifiant écrits, le nombre de messages d'une conversation en pastille grise sur l'anneau, la réponse envoyée en icône au bord de l'anneau, deux valeurs de biologie au plus puis « +N », une seule date, moins de puces redondantes | task-500 | 🟡 Livrée, en attente de validation |
-| Ancienneté et légende des anneaux | Voir depuis combien de temps une boucle est ouverte (« J+N », ou « H+N » pour une valeur critique) dès le premier seuil, et « en retard » au dernier ; régler les seuils de la boîte ; choisir les signes affichés ; ouvrir une légende qui dessine chaque état | task-498 | ⏳ À faire |
+| Une ligne de liste allégée | Lire une ligne qui ne dit que l'utile : plus de « Non affecté » ni d'identifiant écrits, le nombre de messages d'une conversation en pastille grise sur l'anneau, la réponse envoyée en icône au bord de l'anneau, deux valeurs de biologie au plus puis « +N », une seule date, moins de puces redondantes | task-500 | ✅ Livrée et mergée |
+| Ancienneté et légende des anneaux | Voir depuis combien de temps une boucle est ouverte (« J+N », ou « H+N » pour une valeur critique) dès le premier seuil, et le compteur en fond plein avec « en retard » au dernier ; lire « Ouvert depuis N jours » dans le détail ; régler les seuils de la boîte, partagés par toutes les personnes qui y travaillent ; choisir les signes que l'on veut voir et le contraste renforcé ; ouvrir une légende qui dessine chaque état et cite les seuils en vigueur | task-498 | 🟡 Livrée, en attente de validation |
 | Tableau de bord : boucles en retard et non affectées | Lire sur les tuiles du tableau de bord « dont N en retard » et le nombre de messages que personne n'a pris, puis ouvrir d'un geste la liste correspondante | task-499 | ⏳ À faire |
 
 ---
@@ -106,8 +106,8 @@ flowchart LR
     I -.-> J[Tableau de bord :<br/>en retard, non affectées]
 ```
 
-Les traits pleins sont livrés (task-497). Les traits pointillés vers l'ancienneté et le tableau de bord sont au
-backlog.
+L'anneau est livré (task-497), l'ancienneté aussi (task-498, en attente de validation). Le trait vers le tableau de
+bord est au backlog (task-499).
 
 ### Lire un anneau
 
@@ -121,6 +121,8 @@ backlog.
 | « Attente patient », « Attente confrère » | La suite est entre les mains d'un tiers, après un rappel, une convocation ou un adressage |
 | Anneau ambre ou rouge | Un compte rendu avec anomalie (ambre) ou avec valeur critique (rouge) reste à acquitter |
 | Un ⚠ atténué sur une ligne fermée | L'anomalie demeure, même une fois la boucle fermée |
+| « J+N » ou « H+N » près de l'anneau | La boucle est ouverte depuis N jours (N heures pour une valeur critique) et a passé le premier seuil de la boîte |
+| Le compteur en fond plein | La boucle est en retard : le dernier seuil de la boîte est atteint, et l'état en clair le dit |
 
 L'état de chaque anneau s'écrit en clair au survol sur l'application web et à l'appui long sur l'application mobile,
 par exemple : « Courrier. Étape 2 sur 3 : lu ; reste : traité. À traiter par … ». Ce texte ne cite jamais le patient.
@@ -165,23 +167,63 @@ Dans les Paramètres, chaque personne choisit « Affichage de la liste : Anneau 
 classique ». En icône classique, la liste redevient celle d'avant, pastilles comprises ; le bloc du détail ne change
 pas. Ce choix est propre à chaque personne et revient à la réouverture (task-497).
 
+### Depuis combien de temps une boucle est ouverte
+
+Une boucle ouverte se compte à partir de l'arrivée du message, ou du geste « Remettre à traiter » s'il a été rouvert.
+Avant le premier seuil, rien ne s'affiche. À partir du premier seuil, la ligne porte « J+N », N étant le nombre de jours
+calendaires écoulés ; pour une valeur critique de biologie, « H+N » en heures jusqu'à 72 heures, puis « J+N ». Au dernier
+seuil, le compteur passe en fond plein et l'état en clair de l'anneau ajoute « en retard ». Dans le détail, le bloc de
+l'anneau dit « Ouvert depuis N jours », et « en retard » au dernier seuil. Une boucle fermée ou hors suivi n'affiche
+jamais d'ancienneté. Le compte se fait sur le poste du praticien, à l'heure de son fuseau (task-498).
+
+### Les seuils de la boîte
+
+Trois seuils par catégorie, strictement croissants :
+
+| Catégorie | 1er seuil | 2e seuil | En retard |
+|---|---|---|---|
+| Biologie critique | 4 h | 24 h | 72 h |
+| Biologie avec anomalie | 1 j | 3 j | 7 j |
+| Courrier et tout le reste | 3 j | 7 j | 14 j |
+
+Ce sont les valeurs par défaut. Les seuils appartiennent à la boîte : toute personne qui y travaille peut les changer,
+dans « Boîte aux lettres » des Paramètres sur l'application web, dans « Suivi » sur l'application mobile, et tout le
+monde voit les mêmes. Une valeur refusée (non entière, hors bornes, non croissante) est expliquée sous le champ. Chaque
+changement est tracé au nom de la personne qui l'a fait, avec les anciennes et les nouvelles valeurs (task-498).
+
+### Ce que chacun choisit d'afficher
+
+Chaque personne choisit les signes qu'elle veut voir : affectation (initiales, « Non affecté »), attente d'un tiers,
+gravité, ancienneté, animations ; tous sont affichés par défaut. « Contraste renforcé », inactif par défaut, épaissit et
+assombrit les traits. Masquer la couleur de gravité laisse le badge ⚠ : une anomalie à acquitter reste toujours
+visible. Ces choix sont propres à la personne et ne changent rien pour ses collègues (task-498).
+
+### La légende des anneaux
+
+La légende dessine chaque état avec l'anneau réel : étapes, boucle fermée, hors suivi, initiales (d'un collègue, de
+soi, d'une personne dont l'accès est retiré), « Non affecté », attente d'un tiers, gravité, compteur et retard. Elle cite
+les seuils en vigueur de la boîte, suit les préférences de la personne, et rappelle que les messages « Pour info », les
+accusés et les messages antérieurs au suivi n'ouvrent pas de boucle. Sur l'application web, c'est la section « Anneau de
+traitement » des Paramètres ; sur l'application mobile, l'entrée du même nom ouvre une page (task-498).
+
 ---
 
 ## 6. Règles métier transverses
 
 | Règle | Énoncé | Statut |
 |---|---|---|
-| L'anneau dessine, il n'ajoute rien | L'anneau représente des états que la boîte connaît déjà : lu, traité, attribué, acquitté. Aucun état nouveau n'est saisi, aucun acte nouveau n'est créé ; chaque geste qui le fait avancer reste tracé comme avant, au nom de la personne qui l'a fait | 🟡 Implémenté, en attente de validation (task-497) |
-| Qui a un anneau | Un message à traiter a un anneau ouvert ; un message traité, un anneau fermé. Les messages « Pour info », les accusés, les rapports et les messages arrivés avant la date de début du suivi sont hors suivi. Envoyés, Brouillons et Corbeille n'ont jamais d'anneau | 🟡 Implémenté, en attente de validation (task-497) |
-| Les étapes suivent le geste réel | Un courrier passe par reçu, lu, traité. Un compte rendu de biologie à acquitter passe par reçu, pris connaissance, suite donnée, résolu : l'étape suit la dernière action, et une action peut en sauter une. Le compte rendu le moins avancé commande l'anneau de la liste | 🟡 Implémenté, en attente de validation (task-497) |
-| La couleur ne dit que la gravité clinique | Neutre sans compte rendu à acquitter, ambre pour une anomalie, rouge pour une valeur critique, telles que le laboratoire les a posées. Aucun état ne repose sur la seule couleur : segments, coche, pointillé, initiales et texte suffisent en niveaux de gris | 🟡 Implémenté, en attente de validation (task-497) |
-| Fermer la boucle n'efface pas l'anomalie | Un message traité ou hors suivi qui porte une anomalie garde un ⚠ atténué | 🟡 Implémenté, en attente de validation (task-497) |
-| À qui le tour se lit dans l'anneau | Les initiales de la personne à qui le message est confié sont au centre de l'anneau, sur fond plein pour soi, barrées si l'accès est retiré. « Non affecté » ne s'affiche que dans une boîte d'au moins deux personnes actives | 🟡 Implémenté, en attente de validation (task-497) |
-| L'état en clair ne nomme jamais le patient | Le texte de l'anneau décrit l'étape et la personne responsable, jamais le patient, son INS ni une valeur de biologie | 🟡 Implémenté, en attente de validation (task-497) |
-| L'anneau appartient à la boîte | Titulaire, délégataire et membre voient les mêmes anneaux, mis à jour en direct. Seul le fond plein des initiales dépend de la personne qui regarde. Une personne sans accès ouvert par l'opérateur ne voit rien | 🟡 Implémenté, en attente de validation (task-497) |
-| L'affichage est un choix personnel | Le choix entre anneau et icône classique appartient à la personne et n'est pas tracé | 🟡 Implémenté, en attente de validation (task-497) |
-| Les seuils d'ancienneté appartiennent à la boîte | Trois seuils par catégorie (valeur critique en heures, biologie et courrier en jours), réglables par toute personne active de la boîte ; chaque changement est tracé au nom de son auteur, avec les anciennes et les nouvelles valeurs | ⏳ À faire (task-498) |
-| L'ancienneté part de l'ouverture de la boucle | Elle se compte en jours calendaires depuis l'arrivée du message, ou depuis « Remettre à traiter » s'il a été rouvert ; une boucle fermée ou hors suivi n'en affiche jamais | ⏳ À faire (task-498) |
+| L'anneau dessine, il n'ajoute rien | L'anneau représente des états que la boîte connaît déjà : lu, traité, attribué, acquitté. Aucun état nouveau n'est saisi, aucun acte nouveau n'est créé ; chaque geste qui le fait avancer reste tracé comme avant, au nom de la personne qui l'a fait | ✅ Implémenté (task-497) |
+| Qui a un anneau | Un message à traiter a un anneau ouvert ; un message traité, un anneau fermé. Les messages « Pour info », les accusés, les rapports et les messages arrivés avant la date de début du suivi sont hors suivi. Envoyés, Brouillons et Corbeille n'ont jamais d'anneau | ✅ Implémenté (task-497) |
+| Les étapes suivent le geste réel | Un courrier passe par reçu, lu, traité. Un compte rendu de biologie à acquitter passe par reçu, pris connaissance, suite donnée, résolu : l'étape suit la dernière action, et une action peut en sauter une. Le compte rendu le moins avancé commande l'anneau de la liste | ✅ Implémenté (task-497) |
+| La couleur ne dit que la gravité clinique | Neutre sans compte rendu à acquitter, ambre pour une anomalie, rouge pour une valeur critique, telles que le laboratoire les a posées. Aucun état ne repose sur la seule couleur : segments, coche, pointillé, initiales et texte suffisent en niveaux de gris | ✅ Implémenté (task-497) |
+| Fermer la boucle n'efface pas l'anomalie | Un message traité ou hors suivi qui porte une anomalie garde un ⚠ atténué | ✅ Implémenté (task-497) |
+| À qui le tour se lit dans l'anneau | Les initiales de la personne à qui le message est confié sont au centre de l'anneau, sur fond plein pour soi, barrées si l'accès est retiré. « Non affecté » ne s'affiche que dans une boîte d'au moins deux personnes actives | ✅ Implémenté (task-497) |
+| L'état en clair ne nomme jamais le patient | Le texte de l'anneau décrit l'étape et la personne responsable, jamais le patient, son INS ni une valeur de biologie | ✅ Implémenté (task-497) |
+| L'anneau appartient à la boîte | Titulaire, délégataire et membre voient les mêmes anneaux, mis à jour en direct. Seul le fond plein des initiales dépend de la personne qui regarde. Une personne sans accès ouvert par l'opérateur ne voit rien | ✅ Implémenté (task-497) |
+| L'affichage est un choix personnel | Le choix entre anneau et icône classique appartient à la personne et n'est pas tracé | ✅ Implémenté (task-497) |
+| Les seuils d'ancienneté appartiennent à la boîte | Trois seuils par catégorie (valeur critique en heures, biologie et courrier en jours), réglables par toute personne active de la boîte ; chaque changement est tracé au nom de son auteur, avec les anciennes et les nouvelles valeurs | 🟡 Implémenté, en attente de validation (task-498) |
+| L'ancienneté part de l'ouverture de la boucle | Elle se compte en jours calendaires depuis l'arrivée du message, ou depuis « Remettre à traiter » s'il a été rouvert ; une boucle fermée ou hors suivi n'en affiche jamais | 🟡 Implémenté, en attente de validation (task-498) |
+| Les signes affichés sont un choix personnel | Chaque personne masque ou montre affectation, attente, gravité, ancienneté et animations, et choisit le contraste renforcé, sans effet pour ses collègues. Une anomalie à acquitter garde toujours son badge ⚠ | 🟡 Implémenté, en attente de validation (task-498) |
 | « En retard » veut dire la même chose partout | Le tableau de bord et la liste comptent les mêmes boucles en retard, selon les seuils de la boîte | ⏳ À faire (task-499) |
 
 ---
@@ -202,7 +244,7 @@ pas. Ce choix est propre à chaque personne et revient à la réouverture (task-
 
 - La variante D a été retenue par le product owner sans l'épreuve auprès de trois à cinq médecins que recommandait la
   revue de design. Le risque principal relevé est qu'un rond portant des initiales se lise comme l'expéditeur ; le
-  texte au survol, et demain la légende (task-498), le couvrent.
+  texte au survol et la légende des anneaux (task-498) le couvrent.
 
 ---
 
@@ -211,7 +253,8 @@ pas. Ce choix est propre à chaque personne et revient à la réouverture (task-
 - [ ] Toutes les features du §4 sont livrées et validées par l'humain.
 - [x] Le praticien voit d'un regard où en est chaque message à traiter, à qui il est confié et s'il porte une anomalie
       de biologie (vérifié automatiquement sur l'application mobile et sur l'application web, task-497).
-- [ ] Le praticien voit depuis combien de temps chaque boucle est ouverte, et lesquelles sont en retard (task-498).
+- [ ] Le praticien voit depuis combien de temps chaque boucle est ouverte, et lesquelles sont en retard (task-498 :
+      livrée et vérifiée automatiquement sur les deux applications, en attente de validation humaine).
 - [ ] Le tableau de bord dit ce qui est en retard et ce que personne n'a pris, et y mène d'un geste (task-499).
 
 ---
@@ -243,16 +286,16 @@ pas. Ce choix est propre à chaque personne et revient à la réouverture (task-
 
 ---
 
-## État de couverture (2026-11-27)
+## État de couverture (2026-11-28)
 
 | Feature | Statut | Couverture | Tasks contributives |
 |---|---|---|---|
 | L'anneau dans la liste et le détail | ✅ Livrée et mergée | 100 % sur l'application web et l'application mobile | task-497 |
-| Ancienneté et légende des anneaux | ⏳ À faire | 0 % | task-498 |
+| Ancienneté et légende des anneaux | 🟡 Livrée, en attente de validation | 100 % sur l'application web et l'application mobile | task-498 |
 | Tableau de bord : boucles en retard et non affectées | ⏳ À faire | 0 % | task-499 |
-| Une ligne de liste allégée | 🟡 Livrée, en attente de validation | 100 % sur l'application web et l'application mobile | task-500 |
+| Une ligne de liste allégée | ✅ Livrée et mergée | 100 % sur l'application web et l'application mobile | task-500 |
 
-**Couverture EPIC consolidée : 2 features livrées sur 4** (1 mergée, 1 en attente de validation) ; 2 au backlog.
+**Couverture EPIC consolidée : 3 features livrées sur 4** (2 mergées, 1 en attente de validation) ; 1 au backlog.
 
 ---
 
@@ -275,6 +318,11 @@ pas. Ce choix est propre à chaque personne et revient à la réouverture (task-
   « N messages », ni l'identifiant (passé au survol), montre deux valeurs de biologie au plus puis « +N », une seule date,
   et perd les mentions redondantes (« MESSAGE », « Envoyé » dans Envoyés, puce « Biologie » et code « (H) » sur le
   mobile). Sur l'application web et sur l'application mobile (task-500).
+- **v0.3 — Ancienneté et légende des anneaux.** Une boucle ouverte dit depuis combien de temps elle l'est : « J+N » dès
+  le premier seuil (« H+N » pour une valeur critique), en fond plein avec « en retard » au dernier, et « Ouvert depuis N
+  jours » dans le détail. Les seuils, trois par catégorie, appartiennent à la boîte et se règlent dans les Paramètres.
+  Chacun choisit les signes qu'il veut voir et peut renforcer le contraste ; une légende dessine chaque état avec
+  l'anneau réel et cite les seuils en vigueur. Sur l'application web et sur l'application mobile (task-498).
 
 ### Conformité réglementaire
 
@@ -282,11 +330,16 @@ pas. Ce choix est propre à chaque personne et revient à la réouverture (task-
   comme avant, au nom de la personne réelle, délégataire compris ; afficher un anneau n'est pas un acte. En boîte
   partagée, un acquittement posé par un délégataire apparaît chez le titulaire avec le délégataire pour auteur
   (task-497).
+- **v0.3 — Le réglage des seuils est tracé.** Changer les seuils de la boîte est un acte imputé à son auteur réel,
+  délégataire compris, avec les anciennes et les nouvelles valeurs ; les choix d'affichage de chacun ne sont pas tracés
+  (task-498).
 
 ### Sécurité
 
 - **v0.1 — Rien du patient dans les signes de l'anneau.** Le texte en clair de l'anneau et les mises à jour en direct
   envoyées aux autres personnes de la boîte ne portent ni nom de patient, ni INS, ni valeur de biologie (task-497).
+- **v0.3 — Les seuils ne s'ouvrent qu'aux personnes autorisées.** Lire ou changer les seuils exige l'accès ouvert par
+  l'opérateur pour cette boîte ; la trace du changement ne porte que des nombres (task-498).
 
 ### Technique / observabilité (sans impact utilisateur direct)
 
@@ -295,6 +348,10 @@ pas. Ce choix est propre à chaque personne et revient à la réouverture (task-
   intermédiaire prévient désormais en direct les autres personnes connectées. Quatre parcours automatiques vérifient
   l'anneau du courrier, celui de la biologie, l'affectation en boîte partagée et le choix de l'icône classique, sur les
   deux applications (task-497).
+- **v0.3 — Une ancienneté calculée à l'affichage.** Aucun compteur n'est stocké ni recalculé en tâche de fond :
+  l'ancienneté se calcule sur le poste à partir de la date de référence et des seuils lus avec les réglages. Deux
+  parcours automatiques vérifient le compteur, le retard, les seuils et la légende sur les deux applications ; ils ont
+  attrapé, avant la mise en revue, un compteur faux d'un jour peu après minuit, aussitôt corrigé (task-498).
 
 ---
 
