@@ -3,7 +3,7 @@
 **Repos**: api-mail, dtos-mss, client-angular, client-mobile
 **Dependencies**: task-497
 **Epic**: E027
-**Reprises**: 1
+**Reprises**: 2
 
 > **Origine.** Demande humaine du 2026-11-27 (« le médecin voit ce qui n'est pas bouclé et ce qui traîne »), phase de
 > conception validée le même jour : `Docs/specs/anneau-de-traitement/` (spécification § 6 et § 10, maquettes
@@ -168,13 +168,13 @@ Lecture du code au 2026-11-27 :
 | Étape | Statut | Durée | Builds | Tests | Scans | Détail |
 |---|---|---|---|---|---|---|
 | /start | ok | 31 s | — | — | — | — |
-| /develop | ok | 20 min 31 s | 13 (1 min 55 s) | 59 (26 min 48 s) | — | dtos-mss 1B/0T, api-mail 7B/56T, client-mobile 3B/3T, client-angular 2B/0T, reprise 1 |
+| /develop | ok | 32 min 16 s | 16 (3 min 12 s) | 62 (28 min 34 s) | — | dtos-mss 1B/0T, api-mail 7B/56T, client-mobile 4B/4T, client-angular 4B/2T, reprise 2 (B-E1) |
 | /review-code | ok | 4 min 15 s | — | — | — | passage 2 |
 | /sonar | ok | 11 min 52 s | 1 (49 s) | 5 (8 min 19 s) | 2 (47 s) | 1 itération(s), api-mail 1B/5T |
 | /lint-angular | ok | 26 s | — | — | — | — |
 | /lint-mobile | ok | 16 s | — | — | — | — |
 | /e2e | failed | 32 min 12 s | — | — | — | e2e ×3 (30 min 00 s), RING-004 mobile rouge : dates serveur sans Z lues en heure locale |
-| **Total cycle** | | **1 h 10 min** | **14 (2 min 45 s)** | **64 (35 min 07 s)** | **2 (47 s)** | |
+| **Total cycle** | | **1 h 21 min** | **17 (4 min 02 s)** | **67 (36 min 53 s)** | **2 (47 s)** | |
 
 Autres commandes mesurées : lint ×2 (17 s), nuget-wait ×1 (11 s), restore ×1 (3.6 s)
 
@@ -788,7 +788,7 @@ Fichiers déjà listés et retouchés : `ring-settings.service(.spec).ts`, `mail
 
 - S-M2 est relevé pour le mobile, mais weda2 a la même forme : si les seuils ne sont pas lus, la légende cite les seuils par défaut comme ceux de la boîte. Le bloc « Boîte aux lettres » dit bien l'échec de lecture ; la légende, elle, ne le dit pas. Non corrigé, car ce n'est pas dans la liste de la reprise. À trancher par la revue.
 
-##### Fichiers à commiter sur TFS (état réel de l'arbre, `git status -uall`, après la reprise 1) — 31 modifiés, 15 créés
+##### Fichiers à commiter sur TFS (état réel de l'arbre, `git status -uall`, après la reprise 2) — 31 modifiés, 16 créés
 
 Modifiés :
 - `front/apps/weda2/src/app/app.config.spec.ts`
@@ -831,6 +831,7 @@ Créés :
 - `front/libs/mss/src/core/utils/mail-aging.util.spec.ts`
 - `front/libs/mss/src/core/utils/mail-aging.util.ts`
 - `front/libs/mss/src/core/utils/mail-ring-display.util.ts`
+- `front/libs/mss/src/core/utils/server-date.util.ts` (reprise 2, B-E1 : lecture en UTC d'une date servie sans fuseau)
 - `front/libs/mss/src/features/mail/components/mail-header/mail-header.aging.spec.ts`
 - `front/libs/mss/src/features/mail/components/mail-ring-panel/mail-ring-panel.aging.spec.ts`
 - `front/libs/mss/src/features/mail/mss-mail.component.ring-settings.spec.ts`
@@ -878,6 +879,38 @@ Non fait, et pourquoi :
   qu'on le voie en specs ciblées. La relecture à l'entrée des deux écrans suffit pour B1.
 - **B4 (weda2)** : déjà vrai sur mobile. Sans lecture réussie, aucun champ n'est proposé (`settings-aging-unavailable`),
   donc aucun PUT n'est possible.
+
+### Reprise 2 après /e2e (B-E1) — 2026-11-28
+
+Périmètre : le seul constat B-E1 (`## Code Review Summary`, « Constat de `/e2e` »). Aucun autre changement.
+
+| Constat | Correctif | Test | Preuve rouge |
+|---|---|---|---|
+| B-E1 mobile | `core/utils/server-date.util.ts` (nouveau) : `serverInstant()` lit une date-heure ISO sans fuseau en UTC (`Z` ajouté), `Z` ou décalage inchangés ; `ringAgingReference` l'utilise (`readDate` retiré). | `treatment-ring-aging.util.spec.ts`, bloc « date du serveur sans désignateur de fuseau » (4 tests) : dates servies sous la forme d'api-mail (`toISOString().slice(0, 19)`). | Sur `1f490eb`, poste à Paris : 4 rouges — « J+9 » au lieu de « J+8 » (arrivée 00 h 30 locale il y a 8 jours, lue à 00 h 30), « H+6 » / « Ouvert depuis 6 heures » au lieu de 5, geste « Remettre à traiter » et `…T23:30:00.123` décalés d'une heure. |
+| B-E1 weda2 | `libs/mss/src/core/utils/server-date.util.ts` (nouveau, même lecture) ; `agingReference` (`mail-aging.util.ts`) l'utilise. | `mail-aging.util.spec.ts`, `describe('agingReference — date du serveur sans désignateur de fuseau')` (4 tests, mêmes cas). | Sur l'arbre d'avant la reprise : 4 rouges — `expected 'J+9' to be 'J+8'`, `'H+6'` au lieu de `'H+5'`, instant du geste décalé de 3 600 000 ms, `22:30:00.123Z` au lieu de `23:30:00.123Z`. |
+| B-E1 e2e | `calendarDaysAgo` (mobile `e2e/specs/functional.spec.ts`) et `calendarDaysSince` (weda2 `e2e/mss-e2e/specs/functional.e2e.ts`) appliquent la même lecture. | Prémisse « arrivé il y a 8 jours » de E2E-RING-004. | Rouge constaté par `/e2e` à 00 h 50 locale (`calendarDaysAgo` → 9). |
+
+- Un poste en UTC ne discrimine pas ces tests (même résultat avant et après) ; la preuve se fait sur le poste, hors UTC
+  (`fuseau-fige-sous-vmthreads`).
+- **Auto-contrôle du correctif** : seules `ringAgingReference` / `agingReference` lisaient une date du serveur dans le
+  calcul de la task (le bloc « Ouvert depuis » du détail et les anneaux des comptes rendus passent par elles). Une date
+  déjà en `Z` ou à décalage (dont `handling.at`) est lue à l'identique : test dédié. Les autres `new Date(` ajoutés par la
+  task construisent des horloges de test ou des dates envoyées au serveur (`toISOString()`, avec `Z`).
+- **client-mobile** `1745cea` (poussé) : build OK, suite complète **2 098 verts** (2 094 + 4), `npm run lint` « All files
+  pass linting », `tsc --noEmit -p e2e/tsconfig.json` OK. Vert marqué.
+- **client-angular** (arbre, non commité) : `nx build weda2` OK, mss-lib **2 330 verts** (2 326 + 4), weda2 **2 684 verts**,
+  `eslint` des deux fichiers OK, `tsc --noEmit -p e2e/mss-e2e/tsconfig.json` OK. Vert marqué. Fichiers TFS ajoutés : 1 créé
+  (`front/libs/mss/src/core/utils/server-date.util.ts`) ; modifiés déjà listés (`mail-aging.util.ts`,
+  `mail-aging.util.spec.ts`, `e2e/mss-e2e/specs/functional.e2e.ts`). Total : 31 modifiés, **16 créés**.
+- **Étape 6b** : E2E-RING-004 et E2E-SETTINGS-006 rejoués seuls sur la voie mobile (`run.mjs --serve-only`, `playwright
+  --grep`, `--retries=0`) : **2 verts** (41,5 s), à 09 h 30 locale — hors de la fenêtre minuit local / minuit UTC, donc sans
+  valeur discriminante pour « J+N » ; la discrimination est portée par les tests unitaires ci-dessus. Les voies complètes
+  restent jouées par `/e2e`.
+- **Passe qualité §Q** : déjà faite par repo ; diff de reprise de quelques lignes, aucun nettoyage (l'expression régulière
+  est recopiée dans les helpers e2e, qui n'importent pas le code de l'application).
+- **Prévention (règle d'or)** : `conventions/angular.md`, `date-serveur-sans-fuseau` (nouvelle entrée).
+- **Hors task, signalé** : l'affichage des heures de `sentDate` peut porter le même décalage (antérieur, non vérifié).
+- Prochaine étape : `/review task-498 --code`.
 
 ## Code Review Summary
 
@@ -980,6 +1013,22 @@ Suggestions sans suite (non bloquantes, pour une task ultérieure ou le merge) :
   après « Réessayer » (fenêtre de 300 ms).
 - mobile : bascules de la légende grisées sans explication si les réglages n'ont pas pu être lus ; champs de seuils
   modifiables pendant l'enregistrement (`reponse-sur-instantane`).
+
+### Constat de `/e2e` (2026-11-28) — reprise 2
+
+`/e2e` rouge sur la voie mobile (E2E-RING-004), diagnostic dans le `## E2E log` et `questions/task-498.md`. Reprise
+relancée par l'humain (`/develop task-498 --reprise`).
+
+#### À corriger par la reprise
+
+- **B-E1 (mobile + weda2)** — l'ancienneté lit les dates du serveur comme des heures locales : api-mail sert
+  `ArrivalDate` / `SentDate` sans `Z` (instant UTC), `new Date(chaîne)` les lit en heure locale. « J+N » d'un jour de
+  trop entre minuit local et minuit UTC ; « H+N » et « Ouvert depuis N heures » d'une heure de trop (deux l'été) à
+  toute heure. Lire une chaîne sans fuseau en UTC dans les deux clients et dans les helpers e2e `calendarDaysAgo` /
+  `calendarDaysSince` ; tests vus rouges (« J+8 » lu « J+9 », « H+N » d'une heure de trop).
+
+Hors task, signalé : l'**affichage** des heures de `sentDate` dans les clients peut porter le même décalage (antérieur
+à task-498, non vérifié à l'écran) — task à part, après vérification.
 
 ## Sonar log
 

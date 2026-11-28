@@ -1047,3 +1047,19 @@ par lint sur du code frais est un échec de lecture de ce fichier.
   remonte sur la ligne suivante sans recouvrir ses contrôles (le chevron reste hors de la zone des actions).
 - **Origine** : recette task-500 (2026-11-27)
 - **Occurrences** : 1
+
+### date-serveur-sans-fuseau — Une date servie par api-mail se lit par `serverInstant`, jamais par `new Date(chaîne)`
+- **Règle** : convention projet (calcul de date, invisible au lint et aux tests à dates en `Z`)
+- **Repos** : client-angular (weda2), client-mobile ; vaut pour les helpers e2e des deux clients
+- **Piège** : api-mail stocke `ArrivalDate` / `SentDate` en `timestamp without time zone` (instant UTC) et les sert
+  **sans `Z`** (`"2026-11-19T23:50:00"`). `new Date(chaîne)` lit une date-heure sans fuseau en **heure locale** : à
+  Paris, une à deux heures trop tôt. Sur task-498, le compteur « J+N » avait un jour de trop entre minuit local et
+  minuit UTC, et « H+N » une heure de trop à toute heure. Les tests unitaires étaient verts : leurs jeux d'essai
+  portaient des dates `toISOString()`, avec `Z`. Seul `/e2e`, joué à 00 h 50, l'a vu.
+- **Consigne** : un calcul sur une date du serveur la lit par `serverInstant()` (`core/utils/server-date.util.ts`,
+  dans chaque client : chaîne sans fuseau lue en UTC, `Z` ou décalage inchangés). Un test de ce calcul sert au moins
+  une date **sous la forme qu'api-mail rend** (`instant.toISOString().slice(0, 19)`), construite depuis une heure
+  locale proche de minuit : rouge sur un poste hors UTC (`fuseau-fige-sous-vmthreads`). Un helper e2e qui recalcule
+  une prémisse depuis une date servie applique la même lecture.
+- **Origine** : `/e2e` task-498 (E2E-RING-004 mobile, 2026-11-28), reprise 2 B-E1
+- **Occurrences** : 1

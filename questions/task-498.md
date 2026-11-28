@@ -1,3 +1,7 @@
+Résolu le 2026-11-28 : reprise 2 relancée par l'humain (`/develop task-498 --reprise`), constat B-E1 corrigé dans les
+deux clients et leurs helpers e2e (client-mobile `1745cea`, weda2 arbre), tests vus rouges. Voir la « Reprise 2 » du
+`## Develop log` de la task.
+
 # task-498 — /e2e rouge : l'ancienneté lit les dates du serveur comme des heures locales
 
 **Étape** : `/e2e` (voie mobile). **Nature du blocage** : **régression** sur un parcours nouveau de la task
